@@ -17,6 +17,5 @@ while True:
         print('Open Error! Try again!')
         continue
     else:
-        class_name, probability = classfication.detect_image(image)
+        class_name = classfication.detect_image(image)
         print(class_name)
-        print(probability)

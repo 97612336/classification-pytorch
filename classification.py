@@ -126,8 +126,8 @@ class Classification(object):
         # ---------------------------------------------------#
         #   绘图并写字
         # ---------------------------------------------------#
-        plt.subplot(1, 1, 1)
-        plt.imshow(np.array(image))
-        plt.title('Class:%s Probability:%.3f' % (class_name, probability))
+        # plt.subplot(1, 1, 1)
+        # plt.imshow(np.array(image))
+        # plt.title('Class:%s Probability:%.3f' % (class_name, probability))
         # plt.show()
-        return class_name, probability
+        return class_name

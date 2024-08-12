@@ -4,56 +4,62 @@ from functools import partial
 import numpy as np
 import torch
 from PIL import Image
+from PIL import ImageFile
 
 from .utils_aug import resize, center_crop
 
 
-#---------------------------------------------------------#
+# ---------------------------------------------------------#
 #   将图像转换成RGB图像，防止灰度图在预测时报错。
 #   代码仅仅支持RGB图像的预测，所有其它类型的图像都会转化成RGB
-#---------------------------------------------------------#
+# ---------------------------------------------------------#
 def cvtColor(image):
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
     if len(np.shape(image)) == 3 and np.shape(image)[2] == 3:
-        return image 
+        return image
     else:
         image = image.convert('RGB')
-        return image 
+        return image
 
-#---------------------------------------------------#
+    # ---------------------------------------------------#
+
+
 #   对输入图像进行resize
-#---------------------------------------------------#
+# ---------------------------------------------------#
 def letterbox_image(image, size, letterbox_image):
     w, h = size
     iw, ih = image.size
     if letterbox_image:
         '''resize image with unchanged aspect ratio using padding'''
-        scale = min(w/iw, h/ih)
-        nw = int(iw*scale)
-        nh = int(ih*scale)
+        scale = min(w / iw, h / ih)
+        nw = int(iw * scale)
+        nh = int(ih * scale)
 
-        image = image.resize((nw,nh), Image.BICUBIC)
-        new_image = Image.new('RGB', size, (128,128,128))
-        new_image.paste(image, ((w-nw)//2, (h-nh)//2))
+        image = image.resize((nw, nh), Image.BICUBIC)
+        new_image = Image.new('RGB', size, (128, 128, 128))
+        new_image.paste(image, ((w - nw) // 2, (h - nh) // 2))
     else:
         if h == w:
             new_image = resize(image, h)
         else:
-            new_image = resize(image, [h ,w])
-        new_image = center_crop(new_image, [h ,w])
+            new_image = resize(image, [h, w])
+        new_image = center_crop(new_image, [h, w])
     return new_image
 
-#---------------------------------------------------#
+
+# ---------------------------------------------------#
 #   获得类
-#---------------------------------------------------#
+# ---------------------------------------------------#
 def get_classes(classes_path):
     with open(classes_path, encoding='utf-8') as f:
         class_names = f.readlines()
     class_names = [c.strip() for c in class_names]
     return class_names, len(class_names)
 
-#----------------------------------------#
+
+# ----------------------------------------#
 #   预处理训练图片
-#----------------------------------------#
+# ----------------------------------------#
 def preprocess_input(x):
     # x /= 127.5
     # x -= 1.
@@ -61,6 +67,7 @@ def preprocess_input(x):
     x -= np.array([0.485, 0.456, 0.406])
     x /= np.array([0.229, 0.224, 0.225])
     return x
+
 
 def show_config(**kwargs):
     print('Configurations:')
@@ -71,12 +78,14 @@ def show_config(**kwargs):
         print('|%25s | %40s|' % (str(key), str(value)))
     print('-' * 70)
 
-#---------------------------------------------------#
+
+# ---------------------------------------------------#
 #   获得学习率
-#---------------------------------------------------#
+# ---------------------------------------------------#
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
+
 
 def weights_init(net, init_type='normal', init_gain=0.02):
     def init_func(m):
@@ -95,10 +104,13 @@ def weights_init(net, init_type='normal', init_gain=0.02):
         elif classname.find('BatchNorm2d') != -1:
             torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
             torch.nn.init.constant_(m.bias.data, 0.0)
+
     print('initialize network with %s type' % init_type)
     net.apply(init_func)
 
-def get_lr_scheduler(lr_decay_type, lr, min_lr, total_iters, warmup_iters_ratio = 0.05, warmup_lr_ratio = 0.1, no_aug_iter_ratio = 0.05, step_num = 10):
+
+def get_lr_scheduler(lr_decay_type, lr, min_lr, total_iters, warmup_iters_ratio=0.05, warmup_lr_ratio=0.1,
+                     no_aug_iter_ratio=0.05, step_num=10):
     def yolox_warm_cos_lr(lr, min_lr, total_iters, warmup_total_iters, warmup_lr_start, no_aug_iter, iters):
         if iters <= warmup_total_iters:
             # lr = (lr - warmup_lr_start) * iters / float(warmup_total_iters) + warmup_lr_start
@@ -107,38 +119,41 @@ def get_lr_scheduler(lr_decay_type, lr, min_lr, total_iters, warmup_iters_ratio 
             lr = min_lr
         else:
             lr = min_lr + 0.5 * (lr - min_lr) * (
-                1.0 + math.cos(math.pi* (iters - warmup_total_iters) / (total_iters - warmup_total_iters - no_aug_iter))
+                    1.0 + math.cos(
+                math.pi * (iters - warmup_total_iters) / (total_iters - warmup_total_iters - no_aug_iter))
             )
         return lr
 
     def step_lr(lr, decay_rate, step_size, iters):
         if step_size < 1:
             raise ValueError("step_size must above 1.")
-        n       = iters // step_size
-        out_lr  = lr * decay_rate ** n
+        n = iters // step_size
+        out_lr = lr * decay_rate ** n
         return out_lr
 
     if lr_decay_type == "cos":
-        warmup_total_iters  = min(max(warmup_iters_ratio * total_iters, 1), 3)
-        warmup_lr_start     = max(warmup_lr_ratio * lr, 1e-6)
-        no_aug_iter         = min(max(no_aug_iter_ratio * total_iters, 1), 15)
-        func = partial(yolox_warm_cos_lr ,lr, min_lr, total_iters, warmup_total_iters, warmup_lr_start, no_aug_iter)
+        warmup_total_iters = min(max(warmup_iters_ratio * total_iters, 1), 3)
+        warmup_lr_start = max(warmup_lr_ratio * lr, 1e-6)
+        no_aug_iter = min(max(no_aug_iter_ratio * total_iters, 1), 15)
+        func = partial(yolox_warm_cos_lr, lr, min_lr, total_iters, warmup_total_iters, warmup_lr_start, no_aug_iter)
     else:
-        decay_rate  = (min_lr / lr) ** (1 / (step_num - 1))
-        step_size   = total_iters / step_num
+        decay_rate = (min_lr / lr) ** (1 / (step_num - 1))
+        step_size = total_iters / step_num
         func = partial(step_lr, lr, decay_rate, step_size)
 
     return func
+
 
 def set_optimizer_lr(optimizer, lr_scheduler_func, epoch):
     lr = lr_scheduler_func(epoch)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
+
 def download_weights(backbone, model_dir="./model_data"):
     import os
     from torch.hub import load_state_dict_from_url
-    
+
     download_urls = {
         'mobilenetv2': 'https://download.pytorch.org/models/mobilenet_v2-b0353104.pth',
         'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -159,7 +174,7 @@ def download_weights(backbone, model_dir="./model_data"):
     }
     try:
         url = download_urls[backbone]
-        
+
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         load_state_dict_from_url(url, model_dir)

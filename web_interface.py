@@ -40,7 +40,7 @@ class ImgClass(Resource):
             "code": 0,
             "msg": "success",
             "res": res,
-            "pro_num": pro_num
+            "pro_num": str(pro_num)
         }
 
 

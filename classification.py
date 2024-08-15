@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from PIL import Image
 from torch import nn
 
 from nets import get_model_from_name
@@ -131,3 +132,38 @@ class Classification(object):
         # plt.title('Class:%s Probability:%.3f' % (class_name, probability))
         # plt.show()
         return class_name
+
+    def flask_detect_image(self, image_path):
+        # ---------------------------------------------------------#
+        #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
+        #   代码仅仅支持RGB图像的预测，所有其它类型的图像都会转化成RGB
+        # ---------------------------------------------------------#
+        image = Image.open(image_path)
+        image = cvtColor(image)
+        # ---------------------------------------------------#
+        #   对图片进行不失真的resize
+        # ---------------------------------------------------#
+        image_data = letterbox_image(image, [self.input_shape[1], self.input_shape[0]], self.letterbox_image)
+        # ---------------------------------------------------------#
+        #   归一化+添加上batch_size维度+转置
+        # ---------------------------------------------------------#
+        image_data = np.transpose(np.expand_dims(preprocess_input(np.array(image_data, np.float32)), 0), (0, 3, 1, 2))
+
+        with torch.no_grad():
+            photo = torch.from_numpy(image_data)
+            if self.cuda:
+                photo = photo.cuda()
+            # ---------------------------------------------------#
+            #   图片传入网络进行预测
+            # ---------------------------------------------------#
+            preds = torch.softmax(self.model(photo)[0], dim=-1).cpu().numpy()
+        # ---------------------------------------------------#
+        #   获得所属种类
+        # ---------------------------------------------------#
+        class_name = self.class_names[np.argmax(preds)]
+        probability = np.max(preds)
+
+        if class_name == "cat":
+            return False, probability
+        else:
+            return True, probability

@@ -7,3 +7,6 @@ torchvision==0.4.0
 tqdm==4.60.0
 Pillow==8.2.0
 h5py==2.10.0
+flask==2.0.3
+flask-RESTful==0.3.10
+

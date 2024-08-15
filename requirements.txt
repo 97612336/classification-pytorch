@@ -9,4 +9,5 @@ Pillow==8.2.0
 h5py==2.10.0
 flask==2.0.3
 flask-RESTful==0.3.10
+gunicorn==21.2.0
 
